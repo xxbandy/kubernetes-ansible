@@ -11,13 +11,17 @@ VIP: '172.16.1.240'
 VIP_NETMASK: 24
 INTERFACE_NAME: eth0
 
-# 后续考虑扩etcd或者master的话可以填写下面预留ip写在证书里
-#certSANs:
-#  apiServer:
+# 后续考虑扩etcd或者master的话可以填写下面预留ip写在证书里,这里预留域名做切换ip的保障手段
+certSANs:
+  apiServer:
+    - apiserver.k8s.local
 #    - 100.64.2.50
 #    - 100.64.2.51
-#  etcd:
-#    - 100.64.2.51
+  etcd:
+    - etcd001.k8s.local
+    - etcd002.k8s.local
+    - etcd003.k8s.local
+#    - 100.64.2.50
 
 docker:
   version: '18.06'
