@@ -11,10 +11,14 @@ VIP: '172.16.1.240'
 VIP_NETMASK: 24
 INTERFACE_NAME: eth0
 
-# 后续考虑扩etcd或者master的话可以填写下面预留ip写在证书里,这里预留域名做切换ip的保障手段
+# 后续考虑扩etcd或者master的话可以填写下面预留ip写在证书里,这里预留域名做切换ip的保障手段,不要删除
+# don't delete the domain list var
 certSANs:
   apiServer:
     - apiserver.k8s.local
+    - apiserver001.k8s.local
+    - apiserver002.k8s.local
+    - apiserver003.k8s.local
 #    - 100.64.2.50
 #    - 100.64.2.51
   etcd:
@@ -71,7 +75,7 @@ flanneld:
 #  logDir: /var/log/flanneld  # 新版无`log_dir参数`,详情 https://github.com/coreos/flannel/issues/1115
   logLevel: 2
 
-infra_image: 'registry.cn-hangzhou.aliyuncs.com/google_containers/pause-amd64:3.1'
+infra_image: 'gcr.azk8s.cn/google_containers/pause-amd64:3.1'
 KUBE_APISERVER: https://{% if groups['master'] | length !=1 %}{{ VIP }}:8443{% else %}{{ hostvars[groups['master'][0]].inventory_hostname }}:6443{% endif %}
 
 # 下面的一些变量address和bind要么默认变量bind住宿主机的单张网卡,要么改成0.0.0.0,healthz和metrics一样
