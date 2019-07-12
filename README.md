@@ -128,8 +128,8 @@ cd Kubernetes-ansible
  * HA: keepalived+haproxy
  * master: 管理组件,检测apiserver端口那个`curl -sk https://master[0]:6443/healthz`的uri模块写法不知道是不是没调对经常报错,测试apiserver端口这步会出现带有`...ignoring`报错请忽略,执行完运行下`kubectl get cs`有输出就不用管
  * bootstrap: 给kubelet注册用
- * node: kubelet
- * addon: kube-proxy,flannel,coredns.metrics-server flannel二进制跑请运行前下载二进制文件`bash get-binaries.sh flanneld`,否则提前拉取镜像使用命令拉取`ansible Allnode -m shell -a 'curl -s https://zhangguanzhang.github.io/bash/pull.sh | bash -s -- quay.io/coreos/flannel:v0.11.0-amd64'`
+ * node: kubelet,执行完后看看`kubectl get node`有没有，没有就复制启动参数前台运行debug，不会就翻到现在正在看的页面结尾部分
+ * addon: kube-proxy,flannel,coredns.metrics-server flannel二进制跑请运行前下载二进制文件`bash get-binaries.sh flanneld`,否则提前拉取镜像使用命令拉取`ansible Allnode -m shell -a 'curl -s https://zhangguanzhang.github.io/bash/pull.sh | bash -s -- quay.io/coreos/flannel:v0.11.0-amd64'`, flanneld错误的话请按照本页面最后面的方法去debug错误信息到issue里
 
 **4 勇者玩法**
  * setup后执行`ansible-playbook deploy.yml --tags docker`然后运行脚本`bash get-binaries.sh all`确认下载完后运行`ansible-playbook deploy.yml --skip-tags docker`
@@ -190,3 +190,68 @@ k8s-n2   Ready    <none>   6s    v1.13.4   172.16.1.7    <none>        CentOS Li
 
 [ingress nginx部署](http://www.servicemesher.com/blog/kubernetes-ingress-controller-deployment-and-ha/)
 [dashboard部署](http://www.servicemesher.com/blog/general-kubernetes-dashboard/)
+
+** debug 错误信息提交方式**
+例如kubelet
+```
+$ systemctl cat kubelet
+# /usr/lib/systemd/system/kubelet.service
+[Unit]
+Description=Kubernetes Kubelet
+Documentation=https://github.com/kubernetes/kubernetes
+After=docker.service
+Requires=docker.service
+
+[Service]
+ExecStart=/usr/local/bin/kubelet \
+  --bootstrap-kubeconfig=/etc/kubernetes/bootstrap.kubeconfig \
+  --kubeconfig=/etc/kubernetes/kubelet.kubeconfig \
+  --config=/etc/kubernetes/kubelet-conf.yml \
+  --hostname-override=k8s-m1 \
+  --pod-infra-container-image=100.64.2.62:9999/pause-amd64:3.1 \
+  --allow-privileged=true \
+  --network-plugin=cni \
+  --cni-conf-dir=/etc/cni/net.d \
+  --cni-bin-dir=/opt/cni/bin \
+  --cert-dir=/etc/kubernetes/pki \
+  --logtostderr=false \
+  --log-dir=/var/log/kubernetes/kubelet \
+  --v=2
+
+Restart=always
+RestartSec=10s
+
+[Install]
+WantedBy=multi-user.target
+```
+把`ExecStart`的部分复制在终端运行，去掉--logtostderr和--log-dir相关的不前台打印日志的选项,--v是日志等级，1-8
+```
+$ /usr/local/bin/kubelet \
+  --bootstrap-kubeconfig=/etc/kubernetes/bootstrap.kubeconfig \
+  --kubeconfig=/etc/kubernetes/kubelet.kubeconfig \
+  --config=/etc/kubernetes/kubelet-conf.yml \
+  --hostname-override=k8s-m1 \
+  --pod-infra-container-image=100.64.2.62:9999/pause-amd64:3.1 \
+  --allow-privileged=true \
+  --network-plugin=cni \
+  --cni-conf-dir=/etc/cni/net.d \
+  --cni-bin-dir=/opt/cni/bin \
+  --cert-dir=/etc/kubernetes/pki \
+  --logtostderr=false \
+  --v=2
+```
+另外kubelet启动报下面错的话，请开启ipv6
+```
+docker_service.go:401] Streaming server stopped unexpectedly: listen tcp [::1]:0: bind: cannot assign requested address
+```
+开启ipv6
+```
+ansible all -m shell -a 'echo 0 > /proc/sys/net/ipv6/conf/all/disable_ipv6'
+sed -ri sed -rn '/f\.[a|d].+ipv6/s#1#0#' /etc/sysctl.d/k8s-sysctl.conf
+ansible all -m copy -a 'src=/etc/sysctl.d/k8s-sysctl.conf dest=/etc/sysctl.d/k8s-sysctl.conf'
+```
+
+二进制flannel开启前台运行debug得手动export加环境变量或者下面行内环境变量
+```
+NODE_NAME=k8s-m1 /usr/local/bin/flanneld ......
+```
