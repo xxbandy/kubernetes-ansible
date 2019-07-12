@@ -191,7 +191,8 @@ k8s-n2   Ready    <none>   6s    v1.13.4   172.16.1.7    <none>        CentOS Li
 [ingress nginx部署](http://www.servicemesher.com/blog/kubernetes-ingress-controller-deployment-and-ha/)
 [dashboard部署](http://www.servicemesher.com/blog/general-kubernetes-dashboard/)
 
-** debug 错误信息提交方式**
+## debug 错误信息提交方式
+
 例如kubelet
 ```
 $ systemctl cat kubelet
@@ -224,7 +225,9 @@ RestartSec=10s
 [Install]
 WantedBy=multi-user.target
 ```
+
 把`ExecStart`的部分复制在终端运行，去掉--logtostderr和--log-dir相关的不前台打印日志的选项,--v是日志等级，1-8
+
 ```
 $ /usr/local/bin/kubelet \
   --bootstrap-kubeconfig=/etc/kubernetes/bootstrap.kubeconfig \
@@ -240,11 +243,15 @@ $ /usr/local/bin/kubelet \
   --logtostderr=false \
   --v=2
 ```
+
 另外kubelet启动报下面错的话，请开启ipv6
+
 ```
 docker_service.go:401] Streaming server stopped unexpectedly: listen tcp [::1]:0: bind: cannot assign requested address
 ```
+
 开启ipv6
+
 ```
 ansible all -m shell -a 'echo 0 > /proc/sys/net/ipv6/conf/all/disable_ipv6'
 sed -ri sed -rn '/f\.[a|d].+ipv6/s#1#0#' /etc/sysctl.d/k8s-sysctl.conf
@@ -252,6 +259,7 @@ ansible all -m copy -a 'src=/etc/sysctl.d/k8s-sysctl.conf dest=/etc/sysctl.d/k8s
 ```
 
 二进制flannel开启前台运行debug得手动export加环境变量或者下面行内环境变量
+
 ```
 NODE_NAME=k8s-m1 /usr/local/bin/flanneld ......
 ```
